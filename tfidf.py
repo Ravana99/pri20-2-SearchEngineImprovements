@@ -1,4 +1,6 @@
 import os
+import re
+from nltk.corpus import stopwords
 from xml.etree import ElementTree
 from sklearn.feature_extraction.text import TfidfVectorizer
 from whoosh.analysis import StemmingAnalyzer, StandardAnalyzer
@@ -11,21 +13,22 @@ from whoosh.analysis import StemmingAnalyzer, StandardAnalyzer
 stemming = True
 docs_to_vectorize = 1000        # How many docs to vectorize, set to None to add vectorize of the docs in the corpus
 corpus_directory = os.path.join("..", "material", "rcv1")  # Directory of your rcv1 folder
+topic_directory = os.path.join(corpus_directory, "..", "topics.txt")  # Directory of your topics.txt file
 
 #######################################################################################################################
 
 
 def preprocess_doc(doc):
     if stemming:
-        analyzer = StemmingAnalyzer()
+        analyzer = StemmingAnalyzer(stoplist=set(stopwords.words("english")))
     else:
-        analyzer = StandardAnalyzer()
+        analyzer = StandardAnalyzer(stoplist=set(stopwords.words("english")))
     tokens = [token.text for token in analyzer(doc)]
     preprocessed_doc = ' '.join(tokens)
     return preprocessed_doc
 
 
-def process_corpus(corpus_dir, d_train=True, d_test=False, stemmed=True):
+def process_documents(corpus_dir, d_train=True, d_test=False, stemmed=True):
     global stemming
     stemming = stemmed
 
@@ -53,6 +56,25 @@ def process_corpus(corpus_dir, d_train=True, d_test=False, stemmed=True):
     return corpus
 
 
+def process_topics(topic_dir, stemmed=True):
+    with open(topic_dir) as f:
+        topics = f.read().split("</top>")[:-1]
+    processed_topics = []
+    for topic in topics:
+        processed_topic = re.sub("<num> Number: R[0-9][0-9][0-9]", "", topic)
+        for tag in ("<top>", "<title>", "<desc> Description:", "<narr> Narrative:"):
+            processed_topic = processed_topic.replace(tag, "")
+        processed_topics.append(processed_topic)
+    preprocessed_topics = [preprocess_doc(topic).replace("documents ", "")
+                                                .replace("document ", "")
+                                                .replace("relevant ", "")
+                                                .replace("relev ", "")
+                                                .replace("irrelevant ", "")
+                                                .replace("irrelev ", "")
+                           for topic in processed_topics]
+    return preprocessed_topics
+
+
 def extract_doc_content(file):
     tree = ElementTree.parse(file)
     root = tree.getroot()  # Root is <newsitem>
@@ -69,7 +91,7 @@ def extract_doc_content(file):
 def vectorize_corpus(corpus):
     vectorizer = TfidfVectorizer()
     matrix = vectorizer.fit_transform(corpus)
-    print(f"Number of docs and number of terms: {matrix.shape}")
+    # print(f"Number of docs and number of terms: {matrix.shape}")
 
     return vectorizer, matrix
 
@@ -80,12 +102,14 @@ def query(vectorizer, query_string):  # Incomplete (only calculates TF-IDF vecto
 
 
 def main():
-    corpus = process_corpus(corpus_directory, d_train=True, d_test=False, stemmed=True)
+    corpus = process_documents(corpus_directory, d_train=True, d_test=False, stemmed=True)
     vectorizer, vectorized_corpus = vectorize_corpus(corpus)
     print("TF-IDF vectors for each document:")
     print(vectorized_corpus)
     print("Query:")
     print(query(vectorizer, "economy mexico bajej"))
+    print("Processed topics:")
+    print(process_topics(topic_directory))
 
 
 if __name__ == "__main__":
