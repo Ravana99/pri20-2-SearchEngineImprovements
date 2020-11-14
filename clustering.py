@@ -1,7 +1,11 @@
 import numpy as np
+from scipy.optimize import minimize
+from scipy.spatial.distance import cosine, cdist
 from sklearn.cluster import AgglomerativeClustering
-
 from tfidf import *
+
+
+np.set_printoptions(threshold=6)
 
 
 def clustering(corpus,  # TODO: change default values
@@ -31,13 +35,68 @@ def clustering(corpus,  # TODO: change default values
     return [(centroids[i], set(clusters[i])) for i in range(n_clusters)]
 
 
+def interpret(cluster, corpus):
+    centroid = cluster[0]
+    doc_ids = list(cluster[1])
+    doc_ids.sort()
+
+    # Calculates centroid in new vector space
+    docs = [doc for i, doc in enumerate(corpus) if i in doc_ids]
+    vectorizer, matrix = vectorize_corpus(docs)
+    tfidf_vectors = [matrix[i, :] for i in range(len(doc_ids))]
+    vec = tfidf_vectors[0]
+    for i in range(1, len(tfidf_vectors)):
+        vec = vec + tfidf_vectors[i]
+    vec = vec / len(tfidf_vectors)
+    new_centroid = vec.toarray()[0]
+
+    # Labels cluster using non-discriminative labeling
+    top_3_term_indices = new_centroid.argsort()[-3:][::-1]
+    top_3_terms = [word for i, word in enumerate(vectorizer.get_feature_names()) if i in top_3_term_indices]
+    label = ' '.join(top_3_terms)
+
+    # Calculates medoid using cosine distance
+    medoid = 0
+    for i in range(1, len(tfidf_vectors)):
+        aux_arr = tfidf_vectors[i].toarray()[0]
+        medoid_arr = tfidf_vectors[medoid].toarray()[0]
+        if cosine(aux_arr, new_centroid) < cosine(medoid_arr, new_centroid):
+            medoid = i
+
+    # Calculates approximate geometric median of cluster through unconstrained minimization
+    # (using the BFGS method with cosine distance)
+    vectorizer, matrix = vectorize_corpus(corpus)
+    points = np.array([matrix[i, :].toarray()[0] for i in range(len(corpus)) if i in doc_ids])
+
+    def agg_distance(x):
+        return cdist([x], points, metric="cosine").sum()
+
+    median = minimize(agg_distance, centroid).x
+
+    return len(doc_ids), doc_ids, centroid, doc_ids[medoid], label, median
+
+
+def evaluate():
+    pass
+
+
 def main():
-    # corpus = process_documents(corpus_directory)
-    corpus = process_topics(topic_directory)
+    # corpus = process_documents(corpus_directory)  # Stemmed documents
+    corpus = process_topics(topic_directory)  # Stemmed topics
+    # corpus = process_documents(corpus_directory, stemmed=False)  # Non stemmed documents
+    # corpus = process_topics(topic_directory, stemmed=False)  # Non stemmed topics
+
     clusters = clustering(corpus,
                           clustering_model=AgglomerativeClustering(n_clusters=35, linkage="average", affinity="cosine"))
-    np.set_printoptions(threshold=6)
-    print(clusters)
+
+    print(f"Clusters: {clusters}")
+    n_docs, docs_in_cluster, centroid, medoid, label, median = interpret(clusters[0], corpus)
+    print(f"Number of docs in cluster 0: {n_docs}")
+    print(f"Docs in cluster 0: {docs_in_cluster}")
+    print(f"Cluster 0 centroid: {centroid}")
+    print(f"Cluster 0 medoid: {medoid}")
+    print(f"Suggested label for cluster 0: {label}")
+    print(f"Geometric median of cluster 0: {median}")
 
 
 if __name__ == "__main__":

@@ -10,7 +10,6 @@ from whoosh.analysis import StemmingAnalyzer, StandardAnalyzer
 
 # Customize parameters here:
 
-stemming = True
 docs_to_vectorize = 1000        # How many docs to vectorize, set to None to add vectorize of the docs in the corpus
 corpus_directory = os.path.join("..", "material", "rcv1")  # Directory of your rcv1 folder
 topic_directory = os.path.join(corpus_directory, "..", "topics.txt")  # Directory of your topics.txt file
@@ -18,8 +17,8 @@ topic_directory = os.path.join(corpus_directory, "..", "topics.txt")  # Director
 #######################################################################################################################
 
 
-def preprocess_doc(doc):
-    if stemming:
+def preprocess_doc(doc, stemmed):
+    if stemmed:
         analyzer = StemmingAnalyzer(stoplist=set(stopwords.words("english")))
     else:
         analyzer = StandardAnalyzer(stoplist=set(stopwords.words("english")))
@@ -29,9 +28,6 @@ def preprocess_doc(doc):
 
 
 def process_documents(corpus_dir, d_train=True, d_test=False, stemmed=True):
-    global stemming
-    stemming = stemmed
-
     n_docs = 0
     corpus = []
 
@@ -47,7 +43,7 @@ def process_documents(corpus_dir, d_train=True, d_test=False, stemmed=True):
     for subdir in subdirs:
         for file in os.listdir(os.path.join(corpus_dir, subdir)):
             doc = extract_doc_content(os.path.join(corpus_dir, subdir, file))
-            preprocessed_doc = preprocess_doc(doc)
+            preprocessed_doc = preprocess_doc(doc, stemmed)
             corpus.append(preprocessed_doc)
             n_docs += 1
             if n_docs == docs_to_vectorize:
@@ -65,12 +61,12 @@ def process_topics(topic_dir, stemmed=True):
         for tag in ("<top>", "<title>", "<desc> Description:", "<narr> Narrative:"):
             processed_topic = processed_topic.replace(tag, "")
         processed_topics.append(processed_topic)
-    preprocessed_topics = [preprocess_doc(topic).replace("documents ", "")
-                                                .replace("document ", "")
-                                                .replace("relevant ", "")
-                                                .replace("relev ", "")
-                                                .replace("irrelevant ", "")
-                                                .replace("irrelev ", "")
+    preprocessed_topics = [preprocess_doc(topic, stemmed).replace("documents ", "")
+                                                         .replace("document ", "")
+                                                         .replace("relevant ", "")
+                                                         .replace("relev ", "")
+                                                         .replace("irrelevant ", "")
+                                                         .replace("irrelev ", "")
                            for topic in processed_topics]
     return preprocessed_topics
 
@@ -96,8 +92,8 @@ def vectorize_corpus(corpus):
     return vectorizer, matrix
 
 
-def query(vectorizer, query_string):  # Incomplete (only calculates TF-IDF vector and returns it), may not be necessary
-    preprocessed_query = preprocess_doc(query_string)
+def query(vectorizer, query_string, stemmed):  # Incomplete (only calculates and returns TF-IDF vector), maybe unneeded
+    preprocessed_query = preprocess_doc(query_string, stemmed)
     return vectorizer.transform([preprocessed_query])
 
 
@@ -107,7 +103,7 @@ def main():
     print("TF-IDF vectors for each document:")
     print(vectorized_corpus)
     print("Query:")
-    print(query(vectorizer, "economy mexico bajej"))
+    print(query(vectorizer, "economy mexico bajej", stemmed=True))
     print("Processed topics:")
     print(process_topics(topic_directory))
 
