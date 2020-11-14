@@ -2,6 +2,8 @@ import numpy as np
 from scipy.optimize import minimize
 from scipy.spatial.distance import cosine, cdist
 from sklearn.cluster import AgglomerativeClustering
+from sklearn.metrics import silhouette_score, calinski_harabasz_score, davies_bouldin_score
+
 from tfidf import *
 
 
@@ -35,6 +37,7 @@ def clustering(corpus,  # TODO: change default values
     return [(centroids[i], set(clusters[i])) for i in range(n_clusters)]
 
 
+# Returns number of docs in cluster, doc ids, centroid, medoid, label, median
 def interpret(cluster, corpus):
     centroid = cluster[0]
     doc_ids = list(cluster[1])
@@ -63,8 +66,8 @@ def interpret(cluster, corpus):
         if cosine(aux_arr, new_centroid) < cosine(medoid_arr, new_centroid):
             medoid = i
 
-    # Calculates approximate geometric median of cluster through unconstrained minimization
-    # (using the BFGS method with cosine distance)
+    # Calculates approximate multivariate geometric median of cluster through unconstrained
+    # minimization using the BFGS method with cosine distance
     vectorizer, matrix = vectorize_corpus(corpus)
     points = np.array([matrix[i, :].toarray()[0] for i in range(len(corpus)) if i in doc_ids])
 
@@ -76,8 +79,19 @@ def interpret(cluster, corpus):
     return len(doc_ids), doc_ids, centroid, doc_ids[medoid], label, median
 
 
-def evaluate():
-    pass
+# Calculates:
+# - The Silhouette Coefficient, to evaluate cohesion and separation combined
+# - The Variance Ratio Criterion, to evaluate cluster validity based on average intra and inter cluster sum of squares
+# - The Davies-Bouldin index, to evaluate solely separation (values closer to zero indicate a better partition)
+def evaluate(corpus,
+             clustering_model=AgglomerativeClustering(n_clusters=35, linkage="average", affinity="cosine")):
+    vectorizer, matrix = vectorize_corpus(corpus)
+    clustering_model = clustering_model.fit(matrix.toarray())
+    sil_score = silhouette_score(matrix.toarray(), clustering_model.labels_, metric="cosine")
+    vrc = calinski_harabasz_score(matrix.toarray(), clustering_model.labels_)
+    dbi = davies_bouldin_score(matrix.toarray(), clustering_model.labels_)
+
+    return sil_score, vrc, dbi
 
 
 def main():
@@ -88,8 +102,8 @@ def main():
 
     clusters = clustering(corpus,
                           clustering_model=AgglomerativeClustering(n_clusters=35, linkage="average", affinity="cosine"))
-
     print(f"Clusters: {clusters}")
+
     n_docs, docs_in_cluster, centroid, medoid, label, median = interpret(clusters[0], corpus)
     print(f"Number of docs in cluster 0: {n_docs}")
     print(f"Docs in cluster 0: {docs_in_cluster}")
@@ -97,6 +111,12 @@ def main():
     print(f"Cluster 0 medoid: {medoid}")
     print(f"Suggested label for cluster 0: {label}")
     print(f"Geometric median of cluster 0: {median}")
+
+    sil_score, vrc, dbi = \
+        evaluate(corpus, clustering_model=AgglomerativeClustering(n_clusters=35, linkage="average", affinity="cosine"))
+    print(f"Silhouette coefficient: {sil_score}")
+    print(f"Variance Ratio Criterion: {vrc}")
+    print(f"Davies-Bouldin index: {dbi}")
 
 
 if __name__ == "__main__":
