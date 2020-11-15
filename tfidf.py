@@ -10,9 +10,11 @@ from whoosh.analysis import StemmingAnalyzer, StandardAnalyzer
 
 # Customize parameters here:
 
-docs_to_vectorize = 1000        # How many docs to vectorize, set to None to add vectorize of the docs in the corpus
+docs_to_vectorize = 2500         # How many docs to vectorize, set to None to vectorize all of the docs in the corpus
 corpus_directory = os.path.join("..", "material", "rcv1")  # Directory of your rcv1 folder
 topic_directory = os.path.join(corpus_directory, "..", "topics.txt")  # Directory of your topics.txt file
+qrels_train_directory = os.path.join(corpus_directory, "..", "qrels.train")
+qrels_test_directory = os.path.join(corpus_directory, "..", "qrels.test")
 
 #######################################################################################################################
 
@@ -42,9 +44,9 @@ def process_documents(corpus_dir, d_train=True, d_test=False, stemmed=True):
 
     for subdir in subdirs:
         for file in os.listdir(os.path.join(corpus_dir, subdir)):
-            doc = extract_doc_content(os.path.join(corpus_dir, subdir, file))
+            doc_id, doc = extract_doc_content(os.path.join(corpus_dir, subdir, file))
             preprocessed_doc = preprocess_doc(doc, stemmed)
-            corpus.append(preprocessed_doc)
+            corpus.append((doc_id, preprocessed_doc))
             n_docs += 1
             if n_docs == docs_to_vectorize:
                 return corpus
@@ -61,19 +63,20 @@ def process_topics(topic_dir, stemmed=True):
         for tag in ("<top>", "<title>", "<desc> Description:", "<narr> Narrative:"):
             processed_topic = processed_topic.replace(tag, "")
         processed_topics.append(processed_topic)
-    preprocessed_topics = [preprocess_doc(topic, stemmed).replace("documents ", "")
-                                                         .replace("document ", "")
-                                                         .replace("relevant ", "")
-                                                         .replace("relev ", "")
-                                                         .replace("irrelevant ", "")
-                                                         .replace("irrelev ", "")
-                           for topic in processed_topics]
+    preprocessed_topics = [(i+101, preprocess_doc(topic, stemmed).replace("documents ", "")
+                                                                 .replace("document ", "")
+                                                                 .replace("relevant ", "")
+                                                                 .replace("relev ", "")
+                                                                 .replace("irrelevant ", "")
+                                                                 .replace("irrelev ", ""))
+                           for i, topic in enumerate(processed_topics)]
     return preprocessed_topics
 
 
 def extract_doc_content(file):
     tree = ElementTree.parse(file)
     root = tree.getroot()  # Root is <newsitem>
+    doc_id = int(root.attrib["itemid"])
     res = ""
     for child in root:
         if child.tag in ("headline", "dateline", "byline"):  # Just extract text
@@ -81,7 +84,16 @@ def extract_doc_content(file):
         elif child.tag == "text":  # Traverse all <p> tags and extract text from each one
             for paragraph in child:
                 res += paragraph.text + " "
-    return res
+    return doc_id, res
+
+
+def extract_relevance(rel_dir):
+    rels = [[] for _ in range(100)]
+    with open(rel_dir) as f:
+        for line in f:
+            lst = line.split()
+            rels[int(lst[0][-3:])-101].append((int(lst[1]), int(lst[2])))
+    return rels
 
 
 def vectorize_corpus(corpus):
