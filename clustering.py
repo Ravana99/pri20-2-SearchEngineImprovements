@@ -16,20 +16,23 @@ def clustering(corpus,  # TODO: change default values
     old_to_new_id = {el[0]: i for i, el in enumerate(corpus)}
     new_to_old_id = {i: el[0] for i, el in enumerate(corpus)}
 
-    vectorizer, matrix = vectorize_corpus(el[1] for el in corpus)
+    vectorizer, matrix = vectorize_corpus(corpus)
     clustering_model = clustering_model.fit(matrix.toarray())
 
     n_clusters = len(set(clustering_model.labels_))
 
+    # Creates list of clusters, each cluster containing its doc ids
     clusters = [[] for _ in range(n_clusters)]
     for i, label in enumerate(clustering_model.labels_):
         clusters[label].append(new_to_old_id[i])
 
+    # Creates list of clusters, each cluster containing its TF-IDF vectors
     tfidf_vectors = [[] for _ in range(n_clusters)]
     for i, lst in enumerate(clusters):
         tfidf_vectors[i] = [matrix[old_to_new_id[doc_id], :] for doc_id in lst]
 
-    centroids = [[] for _ in range(n_clusters)]  # Centroids calculated using the mean
+    # Calculates centroids using the mean
+    centroids = [[] for _ in range(n_clusters)]
     for i, lst in enumerate(tfidf_vectors):
         x = lst[0]
         for j in range(1, len(lst)):
@@ -42,8 +45,6 @@ def clustering(corpus,  # TODO: change default values
 
 # Returns number of docs in cluster, doc ids, centroid, medoid, label, median
 def interpret(cluster, corpus):
-
-    old_to_new_id = {el[0]: i for i, el in enumerate(corpus)}
     new_to_old_id = {i: el[0] for i, el in enumerate(corpus)}
 
     centroid = cluster[0]
@@ -51,8 +52,7 @@ def interpret(cluster, corpus):
     doc_ids.sort()
 
     # Calculates centroid in new vector space
-    docs = [doc for i, doc in enumerate(el[1] for el in corpus) if new_to_old_id[i] in doc_ids]
-    vectorizer, matrix = vectorize_corpus(docs)
+    vectorizer, matrix = vectorize_corpus(corpus)
     tfidf_vectors = [matrix[i, :] for i in range(len(doc_ids))]
     vec = tfidf_vectors[0]
     for i in range(1, len(tfidf_vectors)):
@@ -75,7 +75,7 @@ def interpret(cluster, corpus):
 
     # Calculates approximate multivariate geometric median of cluster through unconstrained
     # minimization using the BFGS method with cosine distance
-    vectorizer, matrix = vectorize_corpus(el[1] for el in corpus)
+    vectorizer, matrix = vectorize_corpus(corpus)
     points = np.array([matrix[i, :].toarray()[0] for i in range(len(corpus)) if new_to_old_id[i] in doc_ids])
 
     def agg_distance(x):
@@ -92,7 +92,7 @@ def interpret(cluster, corpus):
 # - The Davies-Bouldin index, to evaluate solely separation (values closer to zero indicate a better partition)
 def evaluate(corpus,
              clustering_model=AgglomerativeClustering(n_clusters=35, linkage="average", affinity="cosine")):
-    vectorizer, matrix = vectorize_corpus(el[1] for el in corpus)
+    vectorizer, matrix = vectorize_corpus(corpus)
     clustering_model = clustering_model.fit(matrix.toarray())
     sil_score = silhouette_score(matrix.toarray(), clustering_model.labels_, metric="cosine")
     vrc = calinski_harabasz_score(matrix.toarray(), clustering_model.labels_)
@@ -102,8 +102,8 @@ def evaluate(corpus,
 
 
 def main():
-    corpus = process_documents(corpus_directory)  # Stemmed documents
-    # corpus = process_topics(topic_directory)  # Stemmed topics
+    # corpus = process_documents(corpus_directory, train=True)  # Stemmed documents
+    corpus = process_topics(topic_directory)  # Stemmed topics
     # corpus = process_documents(corpus_directory, stemmed=False)  # Non stemmed documents
     # corpus = process_topics(topic_directory, stemmed=False)  # Non stemmed topics
 

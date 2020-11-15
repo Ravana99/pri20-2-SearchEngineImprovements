@@ -10,7 +10,8 @@ from whoosh.analysis import StemmingAnalyzer, StandardAnalyzer
 
 # Customize parameters here:
 
-docs_to_vectorize = 2500         # How many docs to vectorize, set to None to vectorize all of the docs in the corpus
+docs_to_train = 2500         # How many docs for training, set to None to vectorize all of the docs in D_train
+docs_to_test = 1000          # How many docs for testing, set to None to vectorize all of the docs in D_test
 corpus_directory = os.path.join("..", "material", "rcv1")  # Directory of your rcv1 folder
 topic_directory = os.path.join(corpus_directory, "..", "topics.txt")  # Directory of your topics.txt file
 qrels_train_directory = os.path.join(corpus_directory, "..", "qrels.train")
@@ -19,6 +20,7 @@ qrels_test_directory = os.path.join(corpus_directory, "..", "qrels.test")
 #######################################################################################################################
 
 
+# Preprocesses text
 def preprocess_doc(doc, stemmed):
     if stemmed:
         analyzer = StemmingAnalyzer(stoplist=set(stopwords.words("english")))
@@ -29,18 +31,15 @@ def preprocess_doc(doc, stemmed):
     return preprocessed_doc
 
 
-def process_documents(corpus_dir, d_train=True, d_test=False, stemmed=True):
+# Returns list of pairs (doc_id, preprocessed_document)
+def process_documents(corpus_dir, train=True, stemmed=True):
     n_docs = 0
     corpus = []
 
-    if d_test and d_train:
-        subdirs = filter(lambda x: x not in ("codes", "dtds", "MD5SUMS"), os.listdir(corpus_dir))
-    elif d_test:
-        subdirs = filter(lambda x: x >= "19961001" and x not in ("codes", "dtds", "MD5SUMS"), os.listdir(corpus_dir))
-    elif d_train:
+    if train:
         subdirs = filter(lambda x: x < "19961001" and x not in ("codes", "dtds", "MD5SUMS"), os.listdir(corpus_dir))
     else:
-        raise ValueError("At least either d_test or d_train must be True")
+        subdirs = filter(lambda x: x >= "19961001" and x not in ("codes", "dtds", "MD5SUMS"), os.listdir(corpus_dir))
 
     for subdir in subdirs:
         for file in os.listdir(os.path.join(corpus_dir, subdir)):
@@ -48,12 +47,13 @@ def process_documents(corpus_dir, d_train=True, d_test=False, stemmed=True):
             preprocessed_doc = preprocess_doc(doc, stemmed)
             corpus.append((doc_id, preprocessed_doc))
             n_docs += 1
-            if n_docs == docs_to_vectorize:
+            if (train and n_docs == docs_to_train) or (not train and n_docs == docs_to_test):
                 return corpus
 
     return corpus
 
 
+# Returns list of tuples (doc_id, preprocessed topic)
 def process_topics(topic_dir, stemmed=True):
     with open(topic_dir) as f:
         topics = f.read().split("</top>")[:-1]
@@ -73,6 +73,7 @@ def process_topics(topic_dir, stemmed=True):
     return preprocessed_topics
 
 
+# Traverses document XML tree and extracts relevant fields
 def extract_doc_content(file):
     tree = ElementTree.parse(file)
     root = tree.getroot()  # Root is <newsitem>
@@ -87,6 +88,7 @@ def extract_doc_content(file):
     return doc_id, res
 
 
+# Returns list of lists (one for each topic), where each one of those lists stores tuples (doc_id, relevance in topic)
 def extract_relevance(rel_dir):
     rels = [[] for _ in range(100)]
     with open(rel_dir) as f:
@@ -98,7 +100,7 @@ def extract_relevance(rel_dir):
 
 def vectorize_corpus(corpus):
     vectorizer = TfidfVectorizer()
-    matrix = vectorizer.fit_transform(corpus)
+    matrix = vectorizer.fit_transform(el[1] for el in corpus)
     # print(f"Number of docs and number of terms: {matrix.shape}")
 
     return vectorizer, matrix
@@ -110,7 +112,7 @@ def query(vectorizer, query_string, stemmed):  # Incomplete (only calculates and
 
 
 def main():
-    corpus = process_documents(corpus_directory, d_train=True, d_test=False, stemmed=True)
+    corpus = process_documents(corpus_directory, train=True, stemmed=True)
     vectorizer, vectorized_corpus = vectorize_corpus(corpus)
     print("TF-IDF vectors for each document:")
     print(vectorized_corpus)

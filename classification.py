@@ -1,20 +1,20 @@
-import numpy as np
-from sklearn.svm import LinearSVC
+from sklearn.naive_bayes import MultinomialNB
+from sklearn.neighbors import KNeighborsClassifier
 
 from tfidf import *
 
 
-np.set_printoptions(threshold=6)
+vectorizer = TfidfVectorizer()
 
 
-def training(topic_id, d_train, r_train, classifier=LinearSVC()):
+def training(topic_id, d_train, r_train, classifier=MultinomialNB()):
     topic_id -= 101
     rels = r_train[topic_id]
 
-    old_to_new_id = {el[0]: i for i, el in enumerate(d_train)}
-    new_to_old_id = {i: el[0] for i, el in enumerate(d_train)}
+    global vectorizer
+    vectorizer, matrix = vectorize_corpus(d_train)
 
-    vectorizer, matrix = vectorize_corpus(el[1] for el in d_train)
+    # Creates relevance list to be used to train the model
     train_target = []
     j = 0
     for i in range(len(d_train)):
@@ -29,8 +29,9 @@ def training(topic_id, d_train, r_train, classifier=LinearSVC()):
     return classifier
 
 
-def classify():
-    pass
+def classify(doc, model):
+    test_vec = vectorizer.transform([doc])
+    return model.predict_proba(test_vec)[0][1]
 
 
 def evaluate():
@@ -38,13 +39,19 @@ def evaluate():
 
 
 def main():
-    corpus = process_documents(corpus_directory, d_train=True, d_test=False)  # Stemmed documents
-    topics = process_topics(topic_directory)  # Stemmed topics
-    # corpus = process_documents(corpus_directory, stemmed=False)  # Non stemmed documents
-    # topics = process_topics(topic_directory, stemmed=False)  # Non stemmed topics
+    train_corpus = process_documents(corpus_directory, train=True)  # Stemmed documents
+    # train_corpus = process_documents(corpus_directory, train=True, stemmed=False)  # Non stemmed documents
+
+    classifiers = [MultinomialNB(), KNeighborsClassifier()]
 
     rels = extract_relevance(qrels_train_directory)
-    classifier = training(102, corpus, rels)
+    classifier = training(102, train_corpus, rels, classifier=classifiers[1])
+
+    test_corpus = process_documents(corpus_directory, train=False)  # Stemmed documents
+    # test_corpus = process_documents(corpus_directory, train=False, stemmed=False)  # Non stemmed documents
+
+    probs = [(test_corpus[i][0], classify(test_corpus[i][1], classifier)) for i in range(1000)]
+    print(probs)
 
 
 if __name__ == "__main__":
