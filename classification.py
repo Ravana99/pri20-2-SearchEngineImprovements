@@ -1,8 +1,11 @@
-# from sklearn.naive_bayes import MultinomialNB
+from sklearn.naive_bayes import MultinomialNB
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn import metrics
 
 from tfidf import *
+
+
+bin_prob_threshold = 0.2  # Value between 0 and 1, probability values >= this threshold will be regarded as relevant
 
 
 def create_target(rels, corpus, max_values=None):
@@ -62,9 +65,9 @@ def evaluate(topic_ids, d_test, r_test, classes_list):
         explained_variance_score = metrics.explained_variance_score(cont_target, cont_classes)
         r2_score = metrics.r2_score(cont_target, cont_classes)
 
-        # With binarization of probability values (p >= 0.5 is considered relevant, else irrelevant)
+        # With binarization of probability values (p >= bin_prob_threshold is considered relevant, else irrelevant)
         bin_target = target
-        bin_classes = [1 if x >= 0.5 else 0 for x in classes]
+        bin_classes = [1 if x >= bin_prob_threshold else 0 for x in classes]
         tp, tn, fp, fn = 0, 0, 0, 0
         for t, c in zip(bin_target, bin_classes):
             if t == 1 and c == 1:
@@ -102,7 +105,7 @@ def main():
     classes_list = []
     for topic in topics:
         print(f"Training for topic {topic}")
-        model = training(topic, train_corpus, train_rels, model=KNeighborsClassifier(n_neighbors=15))
+        model = training(topic, train_corpus, train_rels, model=KNeighborsClassifier(n_neighbors=50))
         # model = training(topic, train_corpus, train_rels, model=MultinomialNB(alpha=1.0))
         print(f"Classifying for topic {topic}")
         classes = [classify(test_corpus[i][1], model) for i in range(docs_to_test)]
@@ -121,7 +124,8 @@ def main():
         print(f"Explained variance score: {evs}")
         print(f"R^2 score: {r2}")
         print()
-        print("**With binarization of probability values (p >= 0.5 is considered relevant, else irrelevant)**")
+        print(f"**With binarization of probability values (p >"
+              f"{bin_prob_threshold} is considered relevant, else irrelevant)**")
         print()
         print(f"True positives: {tp}")
         print(f"False negatives: {fn}")
