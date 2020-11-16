@@ -5,7 +5,7 @@ from sklearn import metrics
 from tfidf import *
 
 
-bin_prob_threshold = 0.2  # Value between 0 and 1, probability values >= this threshold will be regarded as relevant
+bin_prob_threshold = 0.4  # Value between 0 and 1, probability values >= this threshold will be regarded as relevant
 
 
 def create_target(rels, corpus, max_values=None):
@@ -124,7 +124,7 @@ def main():
         print(f"Explained variance score: {evs}")
         print(f"R^2 score: {r2}")
         print()
-        print(f"**With binarization of probability values (p >"
+        print(f"**With binarization of probability values (p > "
               f"{bin_prob_threshold} is considered relevant, else irrelevant)**")
         print()
         print(f"True positives: {tp}")
