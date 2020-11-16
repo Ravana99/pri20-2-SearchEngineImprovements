@@ -10,8 +10,8 @@ from whoosh.analysis import StemmingAnalyzer, StandardAnalyzer
 
 # Customize parameters here:
 
-docs_to_train = 2500         # How many docs for training, set to None to vectorize all of the docs in D_train
-docs_to_test = 1000          # How many docs for testing, set to None to vectorize all of the docs in D_test
+docs_to_train = 25000        # How many docs for training, set to None to vectorize all of the docs in D_train
+docs_to_test = 5000          # How many docs for testing, set to None to vectorize all of the docs in D_test
 corpus_directory = os.path.join("..", "material", "rcv1")  # Directory of your rcv1 folder
 topic_directory = os.path.join(corpus_directory, "..", "topics.txt")  # Directory of your topics.txt file
 qrels_train_directory = os.path.join(corpus_directory, "..", "qrels.train")
