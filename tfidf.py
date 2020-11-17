@@ -106,6 +106,23 @@ def vectorize_corpus(corpus):
     return vectorizer, matrix
 
 
+def remove_duplicates_doc(document):
+    doc = document.split()
+    no_dups = []
+    for word in doc:
+        if document.count(word) > 1 and (word not in no_dups) or document.count(word) == 1:
+            no_dups.append(word)
+    return ' '.join(no_dups)
+
+
+def remove_duplicates_corpus(corpus):
+    no_dups_corpus = []
+    for el in corpus:
+        no_dups_doc = remove_duplicates_doc(el[1])
+        no_dups_corpus.append((el[0], no_dups_doc))
+    return no_dups_corpus
+
+
 def query(vectorizer, query_string, stemmed):  # Incomplete (only calculates and returns TF-IDF vector), maybe unneeded
     preprocessed_query = preprocess_doc(query_string, stemmed)
     return vectorizer.transform([preprocessed_query])

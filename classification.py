@@ -1,11 +1,20 @@
 from sklearn.naive_bayes import MultinomialNB
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn import metrics
+from sklearn.feature_extraction.text import CountVectorizer
 
 from tfidf import *
+# from bm25vectorizer import *
 
+from scipy.sparse import hstack
 
 bin_prob_threshold = 0.4  # Value between 0 and 1, probability values >= this threshold will be regarded as relevant
+all_features = False  # Run classification with all features (TF, IDF, TF-IDF, BM25) or just TF-IDF
+
+tf_vectorizer = CountVectorizer()
+idf_vectorizer = TfidfVectorizer()
+tfidf_vectorizer = TfidfVectorizer()
+# bm25_vectorizer = BM25()
 
 
 def create_target(rels, corpus, max_values=None):
@@ -24,27 +33,55 @@ def create_target(rels, corpus, max_values=None):
     return target
 
 
-vectorizer = TfidfVectorizer()
-
-
 def training(topic_id, d_train, r_train, model):
     topic_id -= 101
     rels = r_train[topic_id]
 
-    global vectorizer
-    vectorizer, matrix = vectorize_corpus(d_train)
+    global tf_vectorizer
+    global idf_vectorizer
+    global tfidf_vectorizer
+    # global bm25_vectorizer
+
+    tfidf_vectorizer = TfidfVectorizer()
+    tfidf_feature = tfidf_vectorizer.fit_transform(el[1] for el in d_train)
+    features = tfidf_feature
+
+    if all_features:
+        tf_vectorizer = CountVectorizer()
+        tf_feature = tf_vectorizer.fit_transform(el[1] for el in d_train)
+
+        corpus_no_dups = remove_duplicates_corpus(d_train)
+        idf_vectorizer = TfidfVectorizer()
+        idf_feature = idf_vectorizer.fit_transform(el[1] for el in corpus_no_dups)
+
+        """
+        bm25_vectorizer = BM25()
+        bm25_vectorizer.fit(X=(el[1] for el in d_train))
+        bm25_feature = bm25_vectorizer.transform(X=(el[1] for el in d_train))
+        """
+
+        features = hstack([tf_feature, idf_feature, tfidf_feature])
 
     # Creates relevance list to be used to train the model
     train_target = create_target(rels, d_train)
 
-    model.fit(X=matrix, y=train_target)
+    model.fit(X=features, y=train_target)
 
     return model
 
 
 def classify(doc, model):
-    test_vec = vectorizer.transform([doc])
-    res = model.predict_proba(test_vec)[0]
+    tfidf_test_feature = tfidf_vectorizer.transform([doc])
+    test_features = tfidf_test_feature
+
+    if all_features:
+        tf_test_feature = tf_vectorizer.transform([doc])
+        no_dups_doc = remove_duplicates_doc(doc)
+        idf_test_feature = idf_vectorizer.transform([no_dups_doc])
+        # bm25_test_feature = bm25_vectorizer.transform(X=[doc])
+        test_features = hstack([tf_test_feature, idf_test_feature, tfidf_test_feature])
+
+    res = model.predict_proba(test_features)[0]
     return 0.0 if len(res) == 1 else res[1]
 
 
@@ -105,8 +142,8 @@ def main():
     classes_list = []
     for topic in topics:
         print(f"Training for topic {topic}")
-        model = training(topic, train_corpus, train_rels, model=KNeighborsClassifier(n_neighbors=50))
-        # model = training(topic, train_corpus, train_rels, model=MultinomialNB(alpha=1.0))
+        # model = training(topic, train_corpus, train_rels, model=KNeighborsClassifier(n_neighbors=50))
+        model = training(topic, train_corpus, train_rels, model=MultinomialNB(alpha=1.0))
         print(f"Classifying for topic {topic}")
         classes = [classify(test_corpus[i][1], model) for i in range(docs_to_test)]
         classes_list.append(classes)
