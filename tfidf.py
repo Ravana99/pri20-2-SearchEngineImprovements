@@ -53,6 +53,22 @@ def process_documents(corpus_dir, train=True, stemmed=True):
     return corpus
 
 
+# Returns a tuple (doc_id, preprocessed topic)
+def process_topic(topic_id, topic_dir, stemmed=True):
+    with open(topic_dir) as f:
+        topics = f.read().split("</top>")[:-1]
+    processed_topic = re.sub("<num> Number: R[0-9][0-9][0-9]", "", topics[topic_id-101])
+    for tag in ("<top>", "<title>", "<desc> Description:", "<narr> Narrative:"):
+        processed_topic = processed_topic.replace(tag, "")
+    preprocessed_topic = (topic_id, preprocess_doc(processed_topic, stemmed).replace("documents ", "")
+                                                                            .replace("document ", "")
+                                                                            .replace("relevant ", "")
+                                                                            .replace("relev ", "")
+                                                                            .replace("irrelevant ", "")
+                                                                            .replace("irrelev ", ""))
+    return preprocessed_topic
+
+
 # Returns list of tuples (doc_id, preprocessed topic)
 def process_topics(topic_dir, stemmed=True):
     with open(topic_dir) as f:
