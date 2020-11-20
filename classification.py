@@ -1,20 +1,25 @@
 from sklearn.naive_bayes import MultinomialNB
-from sklearn.neighbors import KNeighborsClassifier
+# from sklearn.neighbors import KNeighborsClassifier
 from sklearn import metrics
 from sklearn.feature_extraction.text import CountVectorizer
 from scipy.sparse import hstack
+from scipy.spatial.distance import cosine
+from math import isnan
+from numpy import seterr
 
 from tfidf import *
 from bm25vectorizer import *
 
 
-bin_prob_threshold = 0.5  # Value between 0 and 1, probability values >= this threshold will be regarded as relevant
+bin_prob_threshold = 0.95  # Value between 0 and 1, probability values >= this threshold will be regarded as relevant
 all_features = True  # Run classification with all features (TF, IDF, TF-IDF, BM25) or just TF-IDF
 
 tf_vectorizer = CountVectorizer()
 idf_vectorizer = TfidfVectorizer()
 tfidf_vectorizer = TfidfVectorizer()
 bm25_vectorizer = BM25()
+
+seterr(invalid="ignore")
 
 
 def create_target(rels, corpus, max_values=None):
@@ -43,25 +48,36 @@ def training(topic, d_train, r_train, model):
     global bm25_vectorizer
 
     tfidf_vectorizer = TfidfVectorizer()
-    tfidf_feature = tfidf_vectorizer.fit_transform(el[1] for el in d_train)
+    topic_tfidf_vec = tfidf_vectorizer.fit_transform([topic[1]])
+    doc_tfidf_vec = tfidf_vectorizer.transform(el[1] for el in d_train)
+    cosine_distances = [cosine(doc_tfidf_vec[i].toarray(), topic_tfidf_vec[0].toarray())
+                        for i in range(doc_tfidf_vec.shape[0])]
+    tfidf_feature = np.array([[1 if isnan(cosine_distances[i]) else cosine_distances[i]
+                               for i in range(doc_tfidf_vec.shape[0])]]).transpose()
+
     features = tfidf_feature
 
     if all_features:
         tf_vectorizer = CountVectorizer()
-        tf_feature = tf_vectorizer.fit_transform(el[1] for el in d_train)
+        tf_vectorizer.fit([topic[1]])
+        tf_doc = tf_vectorizer.transform(el[1] for el in d_train)
+        tf_feature = tf_doc.sum(axis=1)
 
-        corpus_no_dups = remove_duplicates_corpus(d_train)
+        topic_no_dups = remove_duplicates_doc(topic[1])
         idf_vectorizer = TfidfVectorizer()
-        idf_feature = idf_vectorizer.fit_transform(el[1] for el in corpus_no_dups)
+        idf_vectorizer.fit([topic_no_dups])
+        corpus_no_dups = remove_duplicates_corpus(d_train)
+        idf_doc = idf_vectorizer.transform(el[1] for el in corpus_no_dups)
+        idf_feature = idf_doc.sum(axis=1)
 
         bm25_vectorizer = BM25()
         corpus = [el[1] for el in d_train]
         bm25_vectorizer.fit(X=corpus)
-        topic_content = topic[1]
-        bm25_res = bm25_vectorizer.transform(q=topic_content, X=corpus)
-        bm25_feature = [[el]*(tf_feature.shape[1]) for el in bm25_res]
+        bm25_res = bm25_vectorizer.transform(q=topic[1], X=corpus)
+        bm25_feature = np.array([[el for el in bm25_res]]).transpose()
 
-        features = hstack([tf_feature, idf_feature, tfidf_feature, bm25_feature])
+        features = hstack([tf_feature, idf_feature, tfidf_feature, sparse.csc_matrix(np.array(bm25_feature))]).toarray()
+
 
     # Creates relevance list to be used to train the model
     train_target = create_target(rels, d_train)
@@ -72,26 +88,28 @@ def training(topic, d_train, r_train, model):
 
 
 def classify(doc, topic, model):
-    tfidf_test_feature = tfidf_vectorizer.transform([doc])
-    test_features = tfidf_test_feature
+    tfidf_doc = tfidf_vectorizer.transform([doc])
+    tfidf_feature = tfidf_doc.sum(axis=1)
+
+    test_features = tfidf_feature
 
     if all_features:
-        tf_test_feature = tf_vectorizer.transform([doc])
-        no_dups_doc = remove_duplicates_doc(doc)
-        idf_test_feature = idf_vectorizer.transform([no_dups_doc])
+        tf_doc = tf_vectorizer.transform([doc])
+        tf_feature = tf_doc.sum(axis=1)
+
+        doc_no_dups = remove_duplicates_doc(doc)
+        idf_doc = idf_vectorizer.transform([doc_no_dups])
+        idf_feature = idf_doc.sum(axis=1)
+
         topic_content = topic[1]
         bm25_res = bm25_vectorizer.transform(q=topic_content, X=[doc])
-        bm25_test_feature = [[bm25_res[0]]*(tf_test_feature.shape[1])]
-        test_features = hstack([tf_test_feature, idf_test_feature, tfidf_test_feature, bm25_test_feature])
+        bm25_feature = np.array([bm25_res]).transpose()
 
-    res = model.predict_proba(test_features)[0]
+        test_features = np.array([[tf_feature[0, 0], idf_feature[0, 0], tfidf_feature[0, 0], bm25_feature[0, 0]]])
 
-    """
-    if 1-res[0] >= 0.5:
-        print(f"topic {topic[0]} - doc {doc} - res {1-res[0]}")
-    """
+    res = model.predict_proba(test_features)
 
-    return 0.0 if len(res) == 1 else res[1]
+    return 0.0 if len(res[0]) == 1 else res[0][1]
 
 
 # What do to in the absence of relevance feedback?
