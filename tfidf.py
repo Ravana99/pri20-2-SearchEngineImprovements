@@ -10,8 +10,8 @@ from whoosh.analysis import StemmingAnalyzer, StandardAnalyzer
 
 # Customize parameters here:
 
-docs_to_train = 25000           # How many docs for training, set to None to vectorize all of the docs in D_train
-docs_to_test = 5000            # How many docs for testing, set to None to vectorize all of the docs in D_test
+docs_to_train = None             # How many docs for training, set to None to vectorize all of the docs in D_train
+docs_to_test = 2500              # How many docs for testing, set to None to vectorize all of the docs in D_test
 corpus_directory = os.path.join("..", "material", "rcv1")  # Directory of your rcv1 folder
 topic_directory = os.path.join(corpus_directory, "..", "topics.txt")  # Directory of your topics.txt file
 qrels_train_directory = os.path.join(corpus_directory, "..", "qrels.train")
@@ -41,16 +41,31 @@ def process_documents(corpus_dir, train=True, stemmed=True):
     else:
         subdirs = filter(lambda x: x >= "19961001" and x not in ("codes", "dtds", "MD5SUMS"), os.listdir(corpus_dir))
 
+    docs_with_rels = get_docs_with_rels(qrels_train_directory, qrels_test_directory, train)
+
     for subdir in subdirs:
         for file in os.listdir(os.path.join(corpus_dir, subdir)):
-            doc_id, doc = extract_doc_content(os.path.join(corpus_dir, subdir, file))
-            preprocessed_doc = preprocess_doc(doc, stemmed)
-            corpus.append((doc_id, preprocessed_doc))
-            n_docs += 1
-            if (train and n_docs == docs_to_train) or (not train and n_docs == docs_to_test):
-                return corpus
+            if int(file[:-10]) in docs_with_rels:
+                doc_id, doc = extract_doc_content(os.path.join(corpus_dir, subdir, file))
+                preprocessed_doc = preprocess_doc(doc, stemmed)
+                corpus.append((doc_id, preprocessed_doc))
+                n_docs += 1
+                if (train and n_docs == docs_to_train) or (not train and n_docs == docs_to_test):
+                    return corpus
 
     return corpus
+
+
+def get_docs_with_rels(d_train, d_test, train):
+    if train:
+        rel_dir = d_train
+    else:
+        rel_dir = d_test
+
+    with open(rel_dir) as f:
+        res = {int(line.split()[1]) for line in f}
+
+    return res
 
 
 # Returns a tuple (doc_id, preprocessed topic)
