@@ -11,7 +11,7 @@ np.set_printoptions(threshold=6)
 
 
 def clustering(corpus,  # TODO: change default values
-               clustering_model=AgglomerativeClustering(n_clusters=35, linkage="average", affinity="cosine")):
+               clustering_model=AgglomerativeClustering(n_clusters=50, linkage="average", affinity="cosine")):
 
     old_to_new_id = {el[0]: i for i, el in enumerate(corpus)}
     new_to_old_id = {i: el[0] for i, el in enumerate(corpus)}
@@ -108,7 +108,7 @@ def main():
     # corpus = process_topics(topic_directory, stemmed=False)  # Non stemmed topics
 
     clusters = clustering(corpus,
-                          clustering_model=AgglomerativeClustering(n_clusters=35, linkage="average", affinity="cosine"))
+                          clustering_model=AgglomerativeClustering(n_clusters=50, linkage="average", affinity="cosine"))
     print(f"Clusters: {clusters}")
 
     n_docs, docs_in_cluster, centroid, medoid, label, median = interpret(clusters[0], corpus)
@@ -120,7 +120,7 @@ def main():
     print(f"Geometric median of cluster 0: {median}")
 
     sil_score, vrc, dbi = \
-        evaluate(corpus, clustering_model=AgglomerativeClustering(n_clusters=35, linkage="average", affinity="cosine"))
+        evaluate(corpus, clustering_model=AgglomerativeClustering(n_clusters=50, linkage="average", affinity="cosine"))
     print(f"Silhouette coefficient: {sil_score}")
     print(f"Variance Ratio Criterion: {vrc}")
     print(f"Davies-Bouldin index: {dbi}")
