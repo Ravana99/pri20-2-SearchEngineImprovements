@@ -11,7 +11,7 @@ np.set_printoptions(threshold=6)
 
 
 def clustering(corpus,  # TODO: change default values
-               clustering_model=AgglomerativeClustering(n_clusters=50, linkage="average", affinity="cosine")):
+               clustering_model=AgglomerativeClustering(n_clusters=52, linkage="complete", affinity="cosine")):
 
     old_to_new_id = {el[0]: i for i, el in enumerate(corpus)}
     new_to_old_id = {i: el[0] for i, el in enumerate(corpus)}
@@ -45,6 +45,7 @@ def clustering(corpus,  # TODO: change default values
 
 # Returns number of docs in cluster, doc ids, centroid, medoid, label, median
 def interpret(cluster, corpus):
+    old_to_new_id = {el[0]: i for i, el in enumerate(corpus)}
     new_to_old_id = {i: el[0] for i, el in enumerate(corpus)}
 
     centroid = cluster[0]
@@ -53,7 +54,7 @@ def interpret(cluster, corpus):
 
     # Calculates centroid in new vector space
     vectorizer, matrix = vectorize_corpus(corpus)
-    tfidf_vectors = [matrix[i, :] for i in range(len(doc_ids))]
+    tfidf_vectors = [matrix[old_to_new_id[i], :] for i in doc_ids]
     vec = tfidf_vectors[0]
     for i in range(1, len(tfidf_vectors)):
         vec = vec + tfidf_vectors[i]
@@ -91,7 +92,7 @@ def interpret(cluster, corpus):
 # - The Variance Ratio Criterion, to evaluate cluster validity based on average intra and inter cluster sum of squares
 # - The Davies-Bouldin index, to evaluate solely separation (values closer to zero indicate a better partition)
 def evaluate(corpus,
-             clustering_model=AgglomerativeClustering(n_clusters=35, linkage="average", affinity="cosine")):
+             clustering_model=AgglomerativeClustering(n_clusters=52, linkage="complete", affinity="cosine")):
     vectorizer, matrix = vectorize_corpus(corpus)
     clustering_model = clustering_model.fit(matrix.toarray())
     sil_score = silhouette_score(matrix.toarray(), clustering_model.labels_, metric="cosine")
@@ -102,16 +103,20 @@ def evaluate(corpus,
 
 
 def main():
-    # corpus = process_documents(corpus_directory, train=True)  # Stemmed documents
-    corpus = process_topics(topic_directory)  # Stemmed topics
+    corpus = process_documents(corpus_directory, train=True)  # Stemmed documents
+    # corpus = process_topics(topic_directory)  # Stemmed topics
     # corpus = process_documents(corpus_directory, stemmed=False)  # Non stemmed documents
     # corpus = process_topics(topic_directory, stemmed=False)  # Non stemmed topics
 
-    clusters = clustering(corpus,
-                          clustering_model=AgglomerativeClustering(n_clusters=50, linkage="average", affinity="cosine"))
+    clusters = clustering(corpus, clustering_model=
+                          AgglomerativeClustering(n_clusters=350, linkage="complete", affinity="cosine"))
     print(f"Clusters: {clusters}")
 
-    n_docs, docs_in_cluster, centroid, medoid, label, median = interpret(clusters[0], corpus)
+    for i, el in enumerate(clusters):
+        if 176 in el[1]:
+            print(i)
+
+    n_docs, docs_in_cluster, centroid, medoid, label, median = interpret(clusters[9], corpus)
     print(f"Number of docs in cluster 0: {n_docs}")
     print(f"Docs in cluster 0: {docs_in_cluster}")
     print(f"Cluster 0 centroid: {centroid}")
@@ -119,8 +124,8 @@ def main():
     print(f"Suggested label for cluster 0: {label}")
     print(f"Geometric median of cluster 0: {median}")
 
-    sil_score, vrc, dbi = \
-        evaluate(corpus, clustering_model=AgglomerativeClustering(n_clusters=50, linkage="average", affinity="cosine"))
+    sil_score, vrc, dbi = evaluate(corpus, clustering_model=
+                                   AgglomerativeClustering(n_clusters=350, linkage="complete", affinity="cosine"))
     print(f"Silhouette coefficient: {sil_score}")
     print(f"Variance Ratio Criterion: {vrc}")
     print(f"Davies-Bouldin index: {dbi}")
