@@ -10,7 +10,7 @@ from tfidf import *
 np.set_printoptions(threshold=6)
 
 
-def clustering(corpus,  # TODO: change default values
+def clustering(corpus,
                clustering_model=AgglomerativeClustering(n_clusters=52, linkage="complete", affinity="cosine")):
 
     old_to_new_id = {el[0]: i for i, el in enumerate(corpus)}
