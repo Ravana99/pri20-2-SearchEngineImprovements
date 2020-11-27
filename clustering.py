@@ -4,7 +4,7 @@ from scipy.spatial.distance import cosine, cdist
 from sklearn.cluster import AgglomerativeClustering
 from sklearn.metrics import silhouette_score, calinski_harabasz_score, davies_bouldin_score
 
-from tfidf import *
+from core import *
 
 
 np.set_printoptions(threshold=6)

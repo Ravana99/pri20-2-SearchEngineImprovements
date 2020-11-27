@@ -1,4 +1,4 @@
-from tfidf import *
+from core import *
 import numpy as np
 import networkx as nx
 from networkx.algorithms.link_analysis.pagerank_alg import pagerank

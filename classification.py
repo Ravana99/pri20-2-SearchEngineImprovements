@@ -1,4 +1,4 @@
-from tfidf import *
+from core import *
 
 from scipy import sparse
 from sklearn.neighbors import KNeighborsClassifier

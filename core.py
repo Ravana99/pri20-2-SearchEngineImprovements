@@ -12,6 +12,7 @@ from whoosh.analysis import StemmingAnalyzer, StandardAnalyzer
 
 docs_to_train = None            # How many docs for training, set to None to vectorize all of the docs in D_train
 docs_to_test = 500              # How many docs for testing, set to None to vectorize all of the docs in D_test
+stemming = True
 corpus_directory = os.path.join("..", "material", "rcv1")  # Directory of your rcv1 folder
 topic_directory = os.path.join(corpus_directory, "..", "topics.txt")  # Directory of your topics.txt file
 qrels_train_directory = os.path.join(corpus_directory, "..", "qrels.train")
@@ -156,18 +157,11 @@ def remove_duplicates_corpus(corpus):
     return no_dups_corpus
 
 
-def query(vectorizer, query_string, stemmed):  # Incomplete (only calculates and returns TF-IDF vector), maybe unneeded
-    preprocessed_query = preprocess_doc(query_string, stemmed)
-    return vectorizer.transform([preprocessed_query])
-
-
 def main():
     corpus = process_documents(corpus_directory, train=True, stemmed=True)
     vectorizer, vectorized_corpus = vectorize_corpus(corpus)
     print("TF-IDF vectors for each document:")
     print(vectorized_corpus)
-    print("Query:")
-    print(query(vectorizer, "economy mexico bajej", stemmed=True))
     print("Processed topics:")
     print(process_topics(topic_directory))
 
