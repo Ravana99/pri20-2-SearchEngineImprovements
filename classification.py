@@ -89,7 +89,8 @@ def training(topic, d_train, r_train, model):
         idf_vectorizer = TfidfVectorizer()
         corpus_no_dups = remove_duplicates_corpus(d_train)
         idf_vectorizer.fit(el[1] for el in corpus_no_dups)
-        topic_idf_vec = idf_vectorizer.transform([topic[1]])
+        topic_no_dups = remove_duplicates_doc(topic[1])
+        topic_idf_vec = idf_vectorizer.transform([topic_no_dups])
         doc_idf_vec = idf_vectorizer.transform(el[1] for el in d_train)
         idf_cosine_distances = [cosine(doc_idf_vec[i].toarray(), topic_idf_vec[0].toarray())
                                 for i in range(doc_idf_vec.shape[0])]
@@ -181,7 +182,8 @@ def classify(doc, topic, model):
 
         doc_no_dups = remove_duplicates_doc(doc)
         idf_doc = idf_vectorizer.transform([doc_no_dups])
-        idf_topic = idf_vectorizer.transform([topic[1]])
+        topic_no_dups = remove_duplicates_doc(doc)
+        idf_topic = idf_vectorizer.transform([topic_no_dups])
         cosine_distance = cosine(idf_doc[0].toarray(), idf_topic[0].toarray())
         idf_feature = np.array([[1 if isnan(cosine_distance) else cosine_distance]])
 
