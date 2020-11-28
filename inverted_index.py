@@ -56,12 +56,9 @@ def indexing(corpus, ram_limit=1024, d_test=True, stemmed=True):
 def traverse_folders(writer, corpus, d_test):
     n_docs = 0
 
-    if d_test:
-        subdirs = filter(lambda x: x >= "19961001" and x not in ("codes", "dtds", "MD5SUMS"), os.listdir(corpus))
-    else:
-        subdirs = filter(lambda x: x not in ("codes", "dtds", "MD5SUMS"), os.listdir(corpus))
+    subdirs = filter(lambda x: x not in ("codes", "dtds", "MD5SUMS"), os.listdir(corpus))
 
-    docs_with_rels = get_docs_with_rels(qrels_train_directory, qrels_test_directory, False)
+    docs_with_rels = get_docs_with_rels(qrels_train_directory, qrels_test_directory, not d_test)
 
     for subdir in subdirs:
         for file in os.listdir(os.path.join(corpus, subdir)):
@@ -148,10 +145,12 @@ def ranking(topic_id, p, index, model="TF-IDF"):
     topic_id = int(topic_id)-101       # Normalize topic identifier to start at 0
     if model == "TF-IDF":
         weighting = scoring.TF_IDF()
+    elif model == "TF":
+        weighting = scoring.Frequency()
     elif model == "BM25":
         weighting = scoring.BM25F()
     else:
-        raise ValueError("Invalid scoring model: please use 'TF-IDF' or 'BM25'")
+        raise ValueError("Invalid scoring model: please use 'TF', 'TF-IDF' or 'BM25'")
 
     topic = process_topic(topic_id, topic_directory)[1]
 
@@ -214,14 +213,13 @@ def ranking_with_classifier(train_corpus, test_corpus, train_rels, topics, p, ix
 
 
 def main():
-    ix, ix_time, ix_space = indexing(corpus_directory, 2048, stemmed=stemming)
+    ix, ix_time, ix_space = indexing(corpus_directory, 2048, stemmed=stemming, d_test=True)
     # ix, ix_time, ix_space = indexing(corpus_directory, 2048, stemmed=False)
     # ix, ix_time, ix_space = open_dir(os.path.join("indexes", "docs")), 0, 0
     # print("Whole index:"); print_index(ix)
     print(f"Time to build index: {round(ix_time, 3)}s")
     print(f"Disk space taken up by the index: {convert_filesize(ix_space)}")
 
-    """
     with ix.searcher() as searcher:
         results = searcher.search(Every(), limit=None)  # Returns every document
         print(f"Number of indexed docs: {len(results)}")
@@ -234,7 +232,6 @@ def main():
 
     print("Ranked query (using BM25) for topic 104 (p=20):")
     print(ranking(104, 20, ix, "BM25"))
-    """
 
     train_corpus = process_documents(corpus_directory, train=True)  # Stemmed documents
     test_corpus = process_documents(corpus_directory, train=False)  # Stemmed documents

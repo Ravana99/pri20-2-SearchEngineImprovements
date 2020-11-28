@@ -1,4 +1,5 @@
 from core import *
+from inverted_index import indexing, ranking
 import numpy as np
 import networkx as nx
 from networkx.algorithms.link_analysis.pagerank_alg import pagerank
@@ -10,7 +11,7 @@ import matplotlib.pyplot as plt
 np.set_printoptions(threshold=6)
 
 
-def build_graph(corpus, threshold, use_idf):
+def build_graph(corpus, use_idf, threshold):
     doc_ids = (el[0] for el in corpus)
     docs = (el[1] for el in corpus)
 
@@ -23,7 +24,7 @@ def build_graph(corpus, threshold, use_idf):
     for i in range(len(pairwise_similarities)):
         for j in range(i+1, len(pairwise_similarities[i])):
             if pairwise_similarities[i][j] > threshold:
-                edges.append((i, j))
+                edges.append((new_to_old_ids[i], new_to_old_ids[j], pairwise_similarities[i][j]))
 
     # graph = nx.DiGraph()
     # graph.add_nodes_from([0, 1, 2, 3])
@@ -31,7 +32,8 @@ def build_graph(corpus, threshold, use_idf):
 
     graph = nx.Graph()
     graph.add_nodes_from(doc_ids)
-    graph.add_edges_from((new_to_old_ids[i], new_to_old_ids[j]) for i, j in edges)
+    for i, j, k in edges:
+        graph.add_edge(i, j, weight=k)
 
     # nx.draw(graph, with_labels=True)
     # plt.show()
@@ -39,24 +41,94 @@ def build_graph(corpus, threshold, use_idf):
     return graph
 
 
-def undirected_page_rank(topic, corpus, n_docs=100, use_idf=True, threshold=0.9,
-                         max_iter=50, damping=0.15, personalization=None, weight=None):
-    graph = build_graph(corpus, threshold, use_idf=use_idf)
+def get_priors(graph, topic, prior_sim):
+    ix = indexing(corpus_directory, 2048, stemmed=stemming)[0]
+    ranks = ranking(topic[0], len(graph.nodes), ix, prior_sim)
+    priors = {node: 0 for node in graph.nodes}
+    for doc, score in ranks:
+        priors[doc] = score
+    return priors
+
+
+def undirected_page_rank(topic, corpus, n_docs=100, sim="TF-IDF", threshold=0.9,
+                         max_iter=50, damping=0.15, use_priors=False, weighted=False):
+
+    if sim not in ("TF", "TF-IDF", "BM25"):
+        raise ValueError("Invalid similarity criterion: please use 'TF', 'TF-IDF' or 'BM25'")
+
+    use_idf = sim != "TF"
+
+    graph = build_graph(corpus, use_idf=use_idf, threshold=threshold)
+
+    priors = get_priors(graph, topic, sim) if use_priors else None
+    weight = "weight" if weighted else None
 
     # "Undirected graphs will be converted to a directed graph with two directed edges for each undirected edge"
-    page_rank = pagerank(graph, max_iter=50, alpha=1-damping, personalization=personalization, weight=weight)
+    page_rank = pagerank(graph, max_iter=max_iter, alpha=1-damping,
+                         personalization=priors, weight=weight)
 
     return Counter(page_rank).most_common(n_docs)
 
 
-def main():
-    corpus = process_documents(corpus_directory, stemmed=True, train=True)  # Stemmed documents
-    # corpus = process_documents(corpus_directory, stemmed=False, train=True)  # Non stemmed documents
-    topics = process_topics(topic_directory, stemmed=True)  # Stemmed topics
-    # corpus = process_topics(topic_directory, stemmed=False)  # Non stemmed topics
+def ranking_with_pagerank(corpus, topics, p, sim, ix, alpha1=0.5, alpha2=0.5):
+    lst = []
+    for topic_id in (el[0] for el in topics if el[0] in topic_ids):
+        rank_results = ranking(topic_id, p, ix, sim)
+        rank_results = [(el[0], el[1] / rank_results[0][1]) for el in rank_results]
 
-    top_docs = undirected_page_rank(topics[1], corpus, n_docs=250)
-    print(top_docs)
+        print(rank_results)
+
+        pagerank_results = undirected_page_rank(topics[topic_id-101], corpus, n_docs=docs_to_test, sim=sim,
+                                                use_priors=True, weighted=True)
+        pagerank_results = [(el[0], el[1] / pagerank_results[0][1]) for el in pagerank_results]
+
+        print(pagerank_results)
+
+        scored_docs = {x: 0 for x in set([el[0] for el in rank_results] + [el[0] for el in pagerank_results])}
+
+        for doc, res in rank_results:
+            scored_docs[doc] += alpha1 * res
+        for doc, res in pagerank_results:
+            scored_docs[doc] += alpha2 * res
+
+        results = [(doc, res) for doc, res in scored_docs.items()]
+        results.sort(reverse=True, key=lambda x: x[1])
+
+        print(results)
+
+        lst.append(results)
+
+    return lst
+
+
+def main():
+    corpus = process_documents(corpus_directory, stemmed=True, train=False)  # Stemmed documents
+    topics = process_topics(topic_directory, stemmed=True)  # Stemmed topics
+
+    # print(undirected_page_rank(topics[3], corpus, n_docs=docs_to_test,
+    #                            sim="TF-IDF", use_priors=True, weighted=True)[:20])
+
+    ix = indexing(corpus_directory, 2048, stemmed=stemming)[0]
+
+    results = ranking_with_pagerank(corpus, topics, docs_to_test, "TF-IDF", ix, 0.5, 0.5)
+
+    # print(results)
+
+
+"""
+    # y/n priors, y/n weights
+    for topic in topic_ids:
+        print(f"*** TOPIC {topic} ***")
+        for sim in ("TF", "TF-IDF", "BM25"):
+            for pr in (False, True):
+                for w in (False, True):
+                    print(f"Results for topic={topic}, sim={sim}, use_priors={pr}, weighted={w}:")
+                    print(undirected_page_rank(topics[topic-101], corpus, n_docs=docs_to_test,
+                                               sim=sim, use_priors=pr, weighted=w)[:20])
+                    print()
+        print()
+        print()
+"""
 
 
 if __name__ == "__main__":
