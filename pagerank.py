@@ -50,7 +50,7 @@ def get_priors(graph, topic, prior_sim):
     return priors
 
 
-def undirected_page_rank(topic, corpus, n_docs=100, sim="TF-IDF", threshold=0.9,
+def undirected_page_rank(topic, corpus, n_docs=100, sim="TF-IDF", threshold=0.4,
                          max_iter=50, damping=0.15, use_priors=False, weighted=False):
 
     if sim not in ("TF", "TF-IDF", "BM25"):
@@ -70,19 +70,15 @@ def undirected_page_rank(topic, corpus, n_docs=100, sim="TF-IDF", threshold=0.9,
     return Counter(page_rank).most_common(n_docs)
 
 
-def ranking_with_pagerank(corpus, topics, p, sim, ix, alpha1=0.5, alpha2=0.5):
+def ranking_with_pagerank(corpus, topics, p, sim, ix, threshold, use_priors, weighted, alpha1=0.25, alpha2=0.75):
     lst = []
     for topic_id in (el[0] for el in topics if el[0] in topic_ids):
         rank_results = ranking(topic_id, p, ix, sim)
         rank_results = [(el[0], el[1] / rank_results[0][1]) for el in rank_results]
 
-        print(rank_results)
-
         pagerank_results = undirected_page_rank(topics[topic_id-101], corpus, n_docs=docs_to_test, sim=sim,
-                                                use_priors=True, weighted=True)
+                                                threshold=threshold, use_priors=use_priors, weighted=weighted)
         pagerank_results = [(el[0], el[1] / pagerank_results[0][1]) for el in pagerank_results]
-
-        print(pagerank_results)
 
         scored_docs = {x: 0 for x in set([el[0] for el in rank_results] + [el[0] for el in pagerank_results])}
 
@@ -94,8 +90,6 @@ def ranking_with_pagerank(corpus, topics, p, sim, ix, alpha1=0.5, alpha2=0.5):
         results = [(doc, res) for doc, res in scored_docs.items()]
         results.sort(reverse=True, key=lambda x: x[1])
 
-        print(results)
-
         lst.append(results)
 
     return lst
@@ -105,12 +99,12 @@ def main():
     corpus = process_documents(corpus_directory, stemmed=True, train=False)  # Stemmed documents
     topics = process_topics(topic_directory, stemmed=True)  # Stemmed topics
 
-    # print(undirected_page_rank(topics[3], corpus, n_docs=docs_to_test,
-    #                            sim="TF-IDF", use_priors=True, weighted=True)[:20])
+    # print(undirected_page_rank(topics[3], corpus, n_docs=docs_to_test, threshold=0.9,
+    #                            sim="TF-IDF", use_priors=False, weighted=True)[:20])
 
     ix = indexing(corpus_directory, 2048, stemmed=stemming)[0]
 
-    results = ranking_with_pagerank(corpus, topics, docs_to_test, "TF-IDF", ix, 0.5, 0.5)
+    results = ranking_with_pagerank(corpus, topics, docs_to_test, "TF-IDF", ix, True, True, 0.5, 0.5)
 
     # print(results)
 

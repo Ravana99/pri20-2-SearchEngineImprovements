@@ -36,7 +36,8 @@ def evaluation(topics, r_test, ix):
     # print("Executing BM25 queries...")
     # bm25_results = [ranking(topic, p, ix, "BM25") for topic in topics]
     print("Executing queries with pagerank input (reusing BM25 directory):")
-    bm25_results = ranking_with_pagerank(test_corpus, processed_topics, docs_to_test, "BM25", ix, 0.5, 0.5)
+    bm25_results = ranking_with_pagerank(test_corpus, processed_topics, docs_to_test, "BM25", ix,
+                                         threshold=0.4, use_priors=True, weighted=True, alpha1=0.25, alpha2=0.75)
 
     # Query results are stored in temp/<scoring>/runs.txt, where scoring can either be "boolean", "tfidf" or "bm25"
     # Creating runs files for TrecTools
@@ -83,7 +84,7 @@ def evaluation(topics, r_test, ix):
     print("Done!")
 
     # BM25 evaluation
-    print("Beginning evaluation for BM-25 retrieval.")
+    print("Beginning evaluation for BM25 retrieval.")
     evaluate(qrels, bm25_runs, topics, "bm25")
     print("Plotting Precision-Recall curves for each topic...")
     plot_rp_curve(qrels, topics, bm25_runs, bm25_results, "bm25")
