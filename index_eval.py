@@ -2,7 +2,7 @@ from trectools import TrecQrel, TrecRun, TrecEval
 from whoosh.index import open_dir
 from inverted_index import *
 import matplotlib.pyplot as plt
-from pagerank import ranking_with_pagerank
+# from pagerank import ranking_with_pagerank
 
 
 #######################################################################################################################
@@ -22,22 +22,22 @@ def evaluation(topics, r_test, ix):
     # Cumulative gains
     # Efficiency
 
-    train_corpus = process_documents(corpus_directory, train=True)  # Stemmed documents
-    test_corpus = process_documents(corpus_directory, train=False)  # Stemmed documents
-    processed_topics = process_topics(topic_directory, stemmed=True)  # Stemmed topics
-    train_rels = extract_relevance(qrels_train_directory)
+    # train_corpus = process_documents(corpus_directory, train=True)  # Stemmed documents
+    # test_corpus = process_documents(corpus_directory, train=False)  # Stemmed documents
+    # processed_topics = process_topics(topic_directory, stemmed=True)  # Stemmed topics
+    # train_rels = extract_relevance(qrels_train_directory)
 
     print("Executing boolean queries...")
     unranked_results = [boolean_query(topic, k, ix) for topic in topics]
-    # print("Executing TF-IDF queries...")
-    # tfidf_results = [ranking(topic, p, ix, "TF-IDF") for topic in topics]
-    print("Executing TF-IDF queries (with classifier input)...")
-    tfidf_results = ranking_with_classifier(train_corpus, test_corpus, train_rels, topic_ids, 500, ix, 1.0, 0.0)
-    # print("Executing BM25 queries...")
-    # bm25_results = [ranking(topic, p, ix, "BM25") for topic in topics]
-    print("Executing queries with pagerank input (reusing BM25 directory):")
-    bm25_results = ranking_with_pagerank(test_corpus, processed_topics, docs_to_test, "BM25", ix,
-                                         threshold=0.4, use_priors=True, weighted=True, alpha1=0.25, alpha2=0.75)
+    print("Executing TF-IDF queries...")
+    tfidf_results = [ranking(topic, p, ix, "TF-IDF") for topic in topics]
+    # print("Executing TF-IDF queries (with classifier input)...")
+    # tfidf_results = ranking_with_classifier(train_corpus, test_corpus, train_rels, topic_ids, 500, ix, 1.0, 0.0)
+    print("Executing BM25 queries...")
+    bm25_results = [ranking(topic, p, ix, "BM25") for topic in topics]
+    # print("Executing queries with pagerank input (reusing BM25 directory):")
+    # bm25_results = ranking_with_pagerank(test_corpus, processed_topics, docs_to_test, "BM25", ix,
+    #                                      threshold=0.4, use_priors=True, weighted=True, alpha1=0.25, alpha2=0.75)
 
     # Query results are stored in temp/<scoring>/runs.txt, where scoring can either be "boolean", "tfidf" or "bm25"
     # Creating runs files for TrecTools

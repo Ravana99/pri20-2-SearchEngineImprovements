@@ -263,10 +263,8 @@ def main():
 
     evaluation = evaluate(topic_ids, test_corpus, test_rels, classes_list)
     print()
-    list_of_r2 = []
     for i, topic_id in enumerate(topic_ids):
         print(f"***Statistics for topic {topic_id}***")
-        # print()
         mse, mae, evs, r2, tp, fn, fp, tn, acc, sens, spec = evaluation[i]
         print("**With the original continuous probability values (using regression metrics)**")
         print()
@@ -274,7 +272,6 @@ def main():
         print(f"Mean absolute error: {mae}")
         print(f"Explained variance score: {evs}")
         print(f"R^2 score: {r2}")
-        list_of_r2.append(r2)
         print()
         print(f"**With binarization of probability values (p >= "
               f"{bin_prob_threshold} is considered relevant, else irrelevant)**")

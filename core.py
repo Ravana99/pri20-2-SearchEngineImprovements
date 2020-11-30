@@ -11,9 +11,9 @@ from whoosh.analysis import StemmingAnalyzer, StandardAnalyzer
 
 # Customize parameters here:
 
-debug = True  # If set to True, a demonstrative main() will be executed when running each source code file
+debug = False  # If set to True, a demonstrative main() will be executed when running each source code file
 
-topic_ids = [104, 113, 121, 135, 146, 148, 159, 160, 175, 190]  # Topics to be analyzed
+topic_ids = [104, 135, 175]  # Topics to be analyzed
 
 docs_to_train = None  # How many docs for training (None = all docs with judgement feedback for those topics)
 docs_to_test = 500    # How many docs for testing (None = all docs with judgement feedback for those topics)
