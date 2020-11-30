@@ -1,5 +1,6 @@
 import os
 import re
+import numpy as np
 from nltk.corpus import stopwords
 from xml.etree import ElementTree
 from sklearn.feature_extraction.text import TfidfVectorizer
@@ -10,17 +11,24 @@ from whoosh.analysis import StemmingAnalyzer, StandardAnalyzer
 
 # Customize parameters here:
 
-docs_to_train = None            # How many docs for training, set to None to vectorize all of the docs in D_train
-docs_to_test = 500              # How many docs for testing, set to None to vectorize all of the docs in D_test
-stemming = True
-corpus_directory = os.path.join("..", "material", "rcv1")  # Directory of your rcv1 folder
-topic_directory = os.path.join(corpus_directory, "..", "topics.txt")  # Directory of your topics.txt file
-qrels_train_directory = os.path.join(corpus_directory, "..", "qrels.train")
-qrels_test_directory = os.path.join(corpus_directory, "..", "qrels.test")
-topic_ids = [104, 113, 121, 135, 146, 148, 159, 160, 175, 190]
+debug = True  # If set to True, a demonstrative main() will be executed when running each source code file
+
+topic_ids = [104, 113, 121, 135, 146, 148, 159, 160, 175, 190]  # Topics to be analyzed
+
+docs_to_train = None  # How many docs for training (None = all docs with judgement feedback for those topics)
+docs_to_test = 500    # How many docs for testing (None = all docs with judgement feedback for those topics)
+
+stemming = True       # Apply stemming during text preprocessing or not
+
+corpus_directory = os.path.join("..", "material", "rcv1")                    # Directory of your rcv1 folder
+topic_directory = os.path.join(corpus_directory, "..", "topics.txt")         # Directory of your topics.txt file
+qrels_train_directory = os.path.join(corpus_directory, "..", "qrels.train")  # Directory of your qrels.train file
+qrels_test_directory = os.path.join(corpus_directory, "..", "qrels.test")    # Directory of your qrels.test file
 
 
 #######################################################################################################################
+
+np.set_printoptions(threshold=10)
 
 
 # Preprocesses text
@@ -166,5 +174,5 @@ def main():
     print(process_topics(topic_directory))
 
 
-if __name__ == "__main__":
+if debug and __name__ == "__main__":
     main()

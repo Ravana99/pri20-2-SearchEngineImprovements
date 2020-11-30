@@ -1,14 +1,8 @@
 from core import *
 from inverted_index import indexing, ranking
-import numpy as np
 import networkx as nx
 from networkx.algorithms.link_analysis.pagerank_alg import pagerank
 from collections import Counter
-
-import matplotlib.pyplot as plt
-
-
-np.set_printoptions(threshold=6)
 
 
 def build_graph(corpus, use_idf, threshold):
@@ -26,17 +20,10 @@ def build_graph(corpus, use_idf, threshold):
             if pairwise_similarities[i][j] > threshold:
                 edges.append((new_to_old_ids[i], new_to_old_ids[j], pairwise_similarities[i][j]))
 
-    # graph = nx.DiGraph()
-    # graph.add_nodes_from([0, 1, 2, 3])
-    # graph.add_edges_from([(0, 1), (0, 3), (1, 2), (1, 3), (2, 3), (3, 0), (3, 1), (3, 2), (3, 3)])
-
     graph = nx.Graph()
     graph.add_nodes_from(doc_ids)
     for i, j, k in edges:
         graph.add_edge(i, j, weight=k)
-
-    # nx.draw(graph, with_labels=True)
-    # plt.show()
 
     return graph
 
@@ -99,31 +86,15 @@ def main():
     corpus = process_documents(corpus_directory, stemmed=True, train=False)  # Stemmed documents
     topics = process_topics(topic_directory, stemmed=True)  # Stemmed topics
 
-    # print(undirected_page_rank(topics[3], corpus, n_docs=docs_to_test, threshold=0.9,
-    #                            sim="TF-IDF", use_priors=False, weighted=True)[:20])
+    print("Top 20 PageRank docs (threshold=0.9, max_iter=50, sim='TF-IDF', use_priors=False, weighted=True:")
+    print(undirected_page_rank(topics[3], corpus, n_docs=docs_to_test, threshold=0.9,
+                               sim="TF-IDF", use_priors=False, weighted=True)[:20])
 
     ix = indexing(corpus_directory, 2048, stemmed=stemming)[0]
 
-    results = ranking_with_pagerank(corpus, topics, docs_to_test, "TF-IDF", ix, True, True, 0.5, 0.5)
-
-    # print(results)
-
-
-"""
-    # y/n priors, y/n weights
-    for topic in topic_ids:
-        print(f"*** TOPIC {topic} ***")
-        for sim in ("TF", "TF-IDF", "BM25"):
-            for pr in (False, True):
-                for w in (False, True):
-                    print(f"Results for topic={topic}, sim={sim}, use_priors={pr}, weighted={w}:")
-                    print(undirected_page_rank(topics[topic-101], corpus, n_docs=docs_to_test,
-                                               sim=sim, use_priors=pr, weighted=w)[:20])
-                    print()
-        print()
-        print()
-"""
+    print("Ranking with the aid of the PageRank scores for all topics in topic_ids:")
+    print(ranking_with_pagerank(corpus, topics, docs_to_test, "TF-IDF", ix, True, True, 0.5, 0.5))
 
 
-if __name__ == "__main__":
+if debug and __name__ == "__main__":
     main()

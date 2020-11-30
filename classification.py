@@ -9,25 +9,22 @@ from sklearn.feature_extraction.text import CountVectorizer
 from scipy.sparse import hstack
 from scipy.spatial.distance import cosine
 from math import isnan
-import numpy as np
+
+classifiers = [KNeighborsClassifier(n_neighbors=25, metric="euclidean"),
+               MultinomialNB,
+               MLPClassifier((100, 100, 100), max_iter=400)]
 
 #######################################################################################################################
 
 # Customize parameters here:
 
-classifier = KNeighborsClassifier(n_neighbors=25, metric="euclidean")
-# classifier = MultinomialNB()
-# classifier = MLPClassifier((100, 100, 100), max_iter=400)
-
+classifier = classifiers[0]
 all_features = False       # Run classification with all features (TF, IDF, TF-IDF, BM25) or just TF-IDF
 bin_prob_threshold = 0.3   # Value between 0 and 1, probability values >= this threshold will be regarded as relevant
 
 #######################################################################################################################
 
-
-np.set_printoptions(threshold=10)
 np.seterr(invalid="ignore")
-
 
 tf_vectorizer = CountVectorizer()
 idf_vectorizer = TfidfVectorizer()
@@ -247,11 +244,9 @@ def evaluate(topics, d_test, r_test, classes_list):
 def main():
     print("Processing d_train")
     train_corpus = process_documents(corpus_directory, train=True)  # Stemmed documents
-    # train_corpus = process_documents(corpus_directory, train=True, stemmed=False)  # Non stemmed documents
 
     print("Processing d_test")
     test_corpus = process_documents(corpus_directory, train=False)  # Stemmed documents
-    # test_corpus = process_documents(corpus_directory, train=False, stemmed=False)  # Non stemmed documents
 
     train_rels = extract_relevance(qrels_train_directory)
     test_rels = extract_relevance(qrels_test_directory)
@@ -295,5 +290,5 @@ def main():
         print()
 
 
-if __name__ == "__main__":
+if debug and __name__ == "__main__":
     main()

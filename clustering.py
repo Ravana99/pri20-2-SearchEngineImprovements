@@ -1,13 +1,9 @@
-import numpy as np
 from scipy.optimize import minimize
 from scipy.spatial.distance import cosine, cdist
 from sklearn.cluster import AgglomerativeClustering
 from sklearn.metrics import silhouette_score, calinski_harabasz_score, davies_bouldin_score
 
 from core import *
-
-
-np.set_printoptions(threshold=6)
 
 
 def clustering(corpus,
@@ -108,13 +104,9 @@ def main():
     # corpus = process_documents(corpus_directory, stemmed=False)  # Non stemmed documents
     # corpus = process_topics(topic_directory, stemmed=False)  # Non stemmed topics
 
-    clusters = clustering(corpus, clustering_model=
-                          AgglomerativeClustering(n_clusters=350, linkage="complete", affinity="cosine"))
+    clusters = clustering(corpus, clustering_model=AgglomerativeClustering(
+                          n_clusters=15, linkage="complete", affinity="cosine"))
     print(f"Clusters: {clusters}")
-
-    for i, el in enumerate(clusters):
-        if 176 in el[1]:
-            print(i)
 
     n_docs, docs_in_cluster, centroid, medoid, label, median = interpret(clusters[9], corpus)
     print(f"Number of docs in cluster 0: {n_docs}")
@@ -124,12 +116,12 @@ def main():
     print(f"Suggested label for cluster 0: {label}")
     print(f"Geometric median of cluster 0: {median}")
 
-    sil_score, vrc, dbi = evaluate(corpus, clustering_model=
-                                   AgglomerativeClustering(n_clusters=350, linkage="complete", affinity="cosine"))
+    sil_score, vrc, dbi = evaluate(corpus, clustering_model=AgglomerativeClustering(
+                                   n_clusters=15, linkage="complete", affinity="cosine"))
     print(f"Silhouette coefficient: {sil_score}")
     print(f"Variance Ratio Criterion: {vrc}")
     print(f"Davies-Bouldin index: {dbi}")
 
 
-if __name__ == "__main__":
+if debug and __name__ == "__main__":
     main()

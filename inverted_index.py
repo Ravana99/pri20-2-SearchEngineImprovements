@@ -21,7 +21,7 @@ from classification import training, classify
 def indexing(corpus, ram_limit=1024, d_test=True, stemmed=True):
     start_time = time.time()
 
-    if stemming:
+    if stemmed:
         analyzer = StemmingAnalyzer(stoplist=set(stopwords.words("english")))
     else:
         analyzer = StandardAnalyzer(stoplist=set(stopwords.words("english")))
@@ -76,9 +76,11 @@ def extract_topic_query(topic_id, index, k):
     topic = process_topic(topic_id, topic_directory)[1]
 
     if stemming:
-        schema = Schema(id=NUMERIC(stored=True), content=TEXT(analyzer=StemmingAnalyzer(stoplist=set(stopwords.words("english")))))
+        schema = Schema(id=NUMERIC(stored=True),
+                        content=TEXT(analyzer=StemmingAnalyzer(stoplist=set(stopwords.words("english")))))
     else:
-        schema = Schema(id=NUMERIC(stored=True), content=TEXT(StandardAnalyzer(stoplist=set(stopwords.words("english")))))
+        schema = Schema(id=NUMERIC(stored=True),
+                        content=TEXT(StandardAnalyzer(stoplist=set(stopwords.words("english")))))
 
     topic_index_dir = os.path.join("indexes", "aux_topic")
 
@@ -135,14 +137,13 @@ def search_occurrences(searcher, occurrences, doc_ids, word):
     aux_occurrences = occurrences.copy()
     try:
         for doc_id in searcher.postings("content", word).all_ids():
-            # Makes sure each entry is only incremented at the end once even if the term shows up in multiple fields
             occurrences[doc_ids[doc_id]] = aux_occurrences[doc_ids[doc_id]] + 1
     except TermNotFound:
         return
 
 
 def ranking(topic_id, p, index, model="TF-IDF"):
-    topic_id = int(topic_id)-101       # Normalize topic identifier to start at 0
+    topic_id = int(topic_id)-101       # Correct topic identifier to start at 0
     if model == "TF-IDF":
         weighting = scoring.TF_IDF()
     elif model == "TF":
@@ -204,7 +205,6 @@ def ranking_with_classifier(train_corpus, test_corpus, train_rels, topics, p, ix
         topic = process_topic(topic_id, topic_directory)
         model = training(topic, train_corpus, train_rels,
                          model=KNeighborsClassifier(n_neighbors=25, metric="euclidean"))
-        # model = training(topic, train_corpus, train_rels, model=MultinomialNB(alpha=1.0))
         classes = [classify(new_corpus[i][1], topic, model) for i in range(len(new_corpus))]
         results = [(el[0], el[1] * alpha1 + classes[i] * alpha2) for i, el in enumerate(results)]
         results.sort(reverse=True, key=lambda x: x[1])
@@ -214,8 +214,8 @@ def ranking_with_classifier(train_corpus, test_corpus, train_rels, topics, p, ix
 
 def main():
     ix, ix_time, ix_space = indexing(corpus_directory, 2048, stemmed=stemming, d_test=True)
-    # ix, ix_time, ix_space = indexing(corpus_directory, 2048, stemmed=False)
     # ix, ix_time, ix_space = open_dir(os.path.join("indexes", "docs")), 0, 0
+
     # print("Whole index:"); print_index(ix)
     print(f"Time to build index: {round(ix_time, 3)}s")
     print(f"Disk space taken up by the index: {convert_filesize(ix_space)}")
@@ -237,9 +237,9 @@ def main():
     test_corpus = process_documents(corpus_directory, train=False)  # Stemmed documents
     train_rels = extract_relevance(qrels_train_directory)
 
-    results = ranking_with_classifier(train_corpus, test_corpus, train_rels, topic_ids, 500, ix)
-    print(results)
+    print("Ranking with the aid of the classifier for all topics in topic_ids:")
+    print(ranking_with_classifier(train_corpus, test_corpus, train_rels, topic_ids, 500, ix))
 
 
-if __name__ == "__main__":
+if debug and __name__ == "__main__":
     main()

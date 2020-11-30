@@ -255,8 +255,8 @@ def main():
     ix = open_dir(os.path.join("indexes", "docs"))
 
     # 5 different topics with varying outcomes across the topics and the 3 kinds of system
-    evaluation(topic_ids, os.path.join(corpus_directory, "..", "qrels.test"), ix)
+    evaluation(topic_ids, qrels_test_directory, ix)
 
 
-if __name__ == "__main__":
+if debug and __name__ == "__main__":
     main()
